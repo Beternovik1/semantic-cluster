@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Outputs & data (keep structure, ignore content)
+outputs/*
+!outputs/.gitkeep
+data/samples/*
+!data/samples/.gitkeep
+
+# Models cache (sentence-transformers downloads here)
+models/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+config.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
