@@ -56,7 +56,6 @@ class ScatterPlot:
         self,
         df_pos: pd.DataFrame,
         df_neg: pd.DataFrame,
-        df: pd.DataFrame,
         concept: str,
         output_dir: Path,
     ) -> tuple[str | None, str]:
@@ -64,9 +63,9 @@ class ScatterPlot:
 
         Args:
             df_pos: Partition with positive sentiment (may have
-                ``umap_x`` / ``umap_y`` columns).
+                ``umap_x`` / ``umap_y`` and ``concept_similarity``
+                columns).
             df_neg: Partition with negative sentiment.
-            df: Full clean DataFrame with ``concept_similarity``.
             concept: The concept string used for the semantic plot.
             output_dir: Directory to save HTML files.
 
@@ -81,8 +80,9 @@ class ScatterPlot:
             title="Topic Distribution — Positive vs Negative",
             output_dir=output_dir,
         )
+        combined = self._combine_partitions(df_pos, df_neg)
         semantic_html = self.generate_semantic_scatter(
-            df=df,
+            df=combined,
             title=f"Semantic Similarity — \"{concept}\"",
             concept_name=concept,
             output_dir=output_dir,

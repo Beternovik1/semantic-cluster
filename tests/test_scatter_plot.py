@@ -44,6 +44,7 @@ def df_pos():
             "sentiment": "pos",
             "polarity": rng.uniform(0.1, 0.9, n),
             "representative_doc": [True] + [False] * (n - 1),
+            "concept_similarity": rng.uniform(-0.3, 0.8, n),
         }
     )
 
@@ -62,20 +63,6 @@ def df_neg():
             "sentiment": "neg",
             "polarity": rng.uniform(-0.9, -0.1, n),
             "representative_doc": [False] * n,
-        }
-    )
-
-
-@pytest.fixture
-def df_semantic():
-    rng = np.random.default_rng(42)
-    n = 40
-    return pd.DataFrame(
-        {
-            "clean_text": [f"review {i}" for i in range(n)],
-            "umap_x": rng.uniform(-5, 5, n),
-            "umap_y": rng.uniform(-5, 5, n),
-            "sentiment": ["pos", "neg"] * (n // 2),
             "concept_similarity": rng.uniform(-0.3, 0.8, n),
         }
     )
@@ -329,9 +316,9 @@ class TestTopicScatterOutput:
 
 
 class TestSemanticScatterOutput:
-    def test_returns_html_string(self, scatter, df_semantic, output_dir):
+    def test_returns_html_string(self, scatter, df_pos, output_dir):
         result = scatter.generate_semantic_scatter(
-            df=df_semantic,
+            df=df_pos,
             title="Semantic",
             concept_name="test",
             output_dir=output_dir,
@@ -339,18 +326,18 @@ class TestSemanticScatterOutput:
         assert isinstance(result, str)
         assert result.startswith("<!DOCTYPE html>") or "<html" in result
 
-    def test_saves_file(self, scatter, df_semantic, output_dir):
+    def test_saves_file(self, scatter, df_pos, output_dir):
         scatter.generate_semantic_scatter(
-            df=df_semantic,
+            df=df_pos,
             title="Semantic",
             concept_name="test",
             output_dir=output_dir,
         )
         assert (output_dir / "scatter_semantic.html").exists()
 
-    def test_html_standalone_no_cdn(self, scatter, df_semantic, output_dir):
+    def test_html_standalone_no_cdn(self, scatter, df_pos, output_dir):
         scatter.generate_semantic_scatter(
-            df=df_semantic,
+            df=df_pos,
             title="Semantic",
             concept_name="test",
             output_dir=output_dir,
@@ -366,19 +353,18 @@ class TestSemanticScatterOutput:
 
 class TestGenerate:
     def test_returns_two_element_tuple(
-        self, scatter, df_pos, df_neg, df_semantic, output_dir
+        self, scatter, df_pos, df_neg, output_dir
     ):
         result = scatter.generate(
             df_pos=df_pos,
             df_neg=df_neg,
-            df=df_semantic,
             concept="test concept",
             output_dir=output_dir,
         )
         assert isinstance(result, tuple)
         assert len(result) == 2
 
-    def test_first_may_be_none(self, scatter, df_neg, df_semantic, output_dir):
+    def test_first_may_be_none(self, scatter, df_neg, output_dir):
         # pass empty pos so topic render is bypassed via nulls
         empty_pos = pd.DataFrame(
             {
@@ -390,12 +376,12 @@ class TestGenerate:
                 "sentiment": [],
                 "polarity": [],
                 "representative_doc": [],
+                "concept_similarity": [],
             }
         )
         r1, r2 = scatter.generate(
             df_pos=empty_pos,
             df_neg=df_neg,
-            df=df_semantic,
             concept="test",
             output_dir=output_dir,
         )
@@ -403,12 +389,11 @@ class TestGenerate:
         assert isinstance(r2, str) or r2 is None
 
     def test_both_files_saved(
-        self, scatter, df_pos, df_neg, df_semantic, output_dir
+        self, scatter, df_pos, df_neg, output_dir
     ):
         scatter.generate(
             df_pos=df_pos,
             df_neg=df_neg,
-            df=df_semantic,
             concept="test",
             output_dir=output_dir,
         )

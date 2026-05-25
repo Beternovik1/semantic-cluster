@@ -66,8 +66,7 @@ class TopicModeler:
         n = len(df)
         min_cluster_size = max(10, n // 10)
         logger.info(
-            "Running BERTopic on %d documents "
-            "(min_cluster_size=%d, nr_topics=auto).",
+            "Running BERTopic on %d documents (min_cluster_size=%d).",
             n,
             min_cluster_size,
         )
@@ -84,7 +83,7 @@ class TopicModeler:
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
             representation_model=representation_model,
-            nr_topics="auto",
+            nr_topics=None,
             verbose=False,
         )
 
@@ -92,6 +91,20 @@ class TopicModeler:
             df["clean_text"].tolist(),
             embeddings=embeddings,
         )
+
+        # Guarded topic reduction — only merge when ≥2 non-noise topics
+        unique_topics = sorted(set(t for t in topics if t != -1))
+        if len(unique_topics) >= 2:
+            logger.info(
+                "Reducing topics (auto) on %d non-noise topics.",
+                len(unique_topics),
+            )
+            topic_model.reduce_topics(
+                df["clean_text"].tolist(),
+                nr_topics="auto",
+            )
+            topics = topic_model.topics_
+            unique_topics = sorted(set(t for t in topics if t != -1))
 
         # UMAP 2-D coordinates
         umap_coords = topic_model.umap_model.transform(embeddings)
@@ -104,9 +117,6 @@ class TopicModeler:
 
         # Build topic metadata dict
         topic_keywords: dict[int, str] = {}
-
-        # Collect all unique topics present in this partition
-        unique_topics = sorted(set(t for t in topics if t != -1))
 
         for tid in unique_topics:
             words = topic_model.get_topic(tid)

@@ -382,6 +382,97 @@ def _setup_mock_bertopic(mock_bertopic_cls, n_docs: int):
     return instance
 
 
+# ── Edge: all documents marked as noise by HDBSCAN ─────────────────────────
+
+
+class TestAllNoiseEdgeCase:
+    """BERTopic path where HDBSCAN labels every document as noise (topic -1)."""
+
+    @patch("src.pipeline.topic_modeler.UMAP")
+    @patch("src.pipeline.topic_modeler.HDBSCAN")
+    @patch("src.pipeline.topic_modeler.BERTopic")
+    def test_does_not_crash(
+        self, mock_bertopic, mock_hdbscan, mock_umap,
+        fake_embedder, lang_cfg, large_df, large_embeddings,
+    ):
+        n = len(large_df)
+        instance = MagicMock()
+        topics = np.full(n, -1)  # all noise
+        instance.fit_transform.return_value = (topics, None)
+        instance.get_topic.return_value = []
+        rng = np.random.default_rng(RANDOM_SEED)
+        umap_mock = MagicMock()
+        umap_mock.transform.return_value = rng.uniform(-1, 1, (n, 2))
+        instance.umap_model = umap_mock
+        instance.topics_ = topics
+        mock_bertopic.return_value = instance
+
+        df_out, keywords, used = TopicModeler(
+            embedding_model=fake_embedder, lang_cfg=lang_cfg
+        ).run(large_df, large_embeddings)
+
+        assert used is True
+        assert len(df_out) == n
+        assert df_out["topic_id"].unique().tolist() == [-1]
+        assert df_out["umap_x"].notna().all()
+        assert df_out["umap_y"].notna().all()
+        assert (df_out["topic_label"] == "").all()
+        assert not df_out["representative_doc"].any()
+        assert keywords == {}
+
+    @patch("src.pipeline.topic_modeler.UMAP")
+    @patch("src.pipeline.topic_modeler.HDBSCAN")
+    @patch("src.pipeline.topic_modeler.BERTopic")
+    def test_reduce_topics_not_called(
+        self, mock_bertopic, mock_hdbscan, mock_umap,
+        fake_embedder, lang_cfg, large_df, large_embeddings,
+    ):
+        n = len(large_df)
+        instance = MagicMock()
+        topics = np.full(n, -1)
+        instance.fit_transform.return_value = (topics, None)
+        rng = np.random.default_rng(RANDOM_SEED)
+        umap_mock = MagicMock()
+        umap_mock.transform.return_value = rng.uniform(-1, 1, (n, 2))
+        instance.umap_model = umap_mock
+        instance.topics_ = topics
+        mock_bertopic.return_value = instance
+
+        TopicModeler(
+            embedding_model=fake_embedder, lang_cfg=lang_cfg
+        ).run(large_df, large_embeddings)
+
+        instance.reduce_topics.assert_not_called()
+
+    @patch("src.pipeline.topic_modeler.UMAP")
+    @patch("src.pipeline.topic_modeler.HDBSCAN")
+    @patch("src.pipeline.topic_modeler.BERTopic")
+    def test_all_required_columns_present(
+        self, mock_bertopic, mock_hdbscan, mock_umap,
+        fake_embedder, lang_cfg, large_df, large_embeddings,
+    ):
+        n = len(large_df)
+        instance = MagicMock()
+        topics = np.full(n, -1)
+        instance.fit_transform.return_value = (topics, None)
+        rng = np.random.default_rng(RANDOM_SEED)
+        umap_mock = MagicMock()
+        umap_mock.transform.return_value = rng.uniform(-1, 1, (n, 2))
+        instance.umap_model = umap_mock
+        instance.topics_ = topics
+        mock_bertopic.return_value = instance
+
+        df_out, _, _ = TopicModeler(
+            embedding_model=fake_embedder, lang_cfg=lang_cfg
+        ).run(large_df, large_embeddings)
+
+        required = {
+            "topic_id", "topic_label", "umap_x", "umap_y",
+            "topic_keywords", "representative_doc",
+        }
+        assert required.issubset(set(df_out.columns))
+
+
 # ── Edge: empty partition ───────────────────────────────────────────────────
 
 

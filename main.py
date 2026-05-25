@@ -198,8 +198,12 @@ def run(args: argparse.Namespace) -> None:
         embedding_model=embedding_model,
         lang_cfg=lang_cfg,
     )
-    df_pos = modeler.run(df_pos, embeddings_clean[pos_mask])
-    df_neg = modeler.run(df_neg, embeddings_clean[neg_mask])
+    df_pos, pos_topic_keywords, pos_used_bertopic = modeler.run(
+        df_pos, embeddings_clean[pos_mask]
+    )
+    df_neg, neg_topic_keywords, neg_used_bertopic = modeler.run(
+        df_neg, embeddings_clean[neg_mask]
+    )
 
     # ── 6. Semantic search ────────────────────────────────────────
     logger.info("[6/6] Running semantic search ...")
@@ -207,7 +211,14 @@ def run(args: argparse.Namespace) -> None:
         embedding_model=embedding_model,
         concept=args.concept,
     )
-    df = searcher.run(df, embeddings_clean)
+    df, _top5_df = searcher.run(df, embeddings_clean)
+
+    # Merge concept_similarity into topic-modeled partitions
+    # (df_pos/df_neg were split from df preserving row order)
+    pos_mask = df["sentiment"] == "pos"
+    neg_mask = df["sentiment"] == "neg"
+    df_pos["concept_similarity"] = df.loc[pos_mask, "concept_similarity"].values
+    df_neg["concept_similarity"] = df.loc[neg_mask, "concept_similarity"].values
 
     # ── Visualizations ────────────────────────────────────────────
     logger.info("[VIZ] Generating scatter plots ...")
@@ -215,13 +226,12 @@ def run(args: argparse.Namespace) -> None:
     scatter_topics_html, scatter_semantic_html = scatter.generate(
         df_pos=df_pos,
         df_neg=df_neg,
-        df=df,
         concept=args.concept,
         output_dir=args.output,
     )
 
     logger.info("[VIZ] Generating word clouds and n-grams ...")
-    wc = WordCloudGenerator(palette)
+    wc = WordCloudGenerator(palette, lang_cfg)
     outliers_viz = wc.from_outliers(outliers_df, args.output)
     wc_positive_b64 = wc.from_partition(df_pos, "positive", args.output)
     wc_negative_b64 = wc.from_partition(df_neg, "negative", args.output)
@@ -230,6 +240,16 @@ def run(args: argparse.Namespace) -> None:
     builder = ReportBuilder(
         title=args.title,
         palette=palette,
+    )
+    pos_fallback_keywords = (
+        None
+        if pos_used_bertopic
+        else pos_topic_keywords.get(-1, "")
+    )
+    neg_fallback_keywords = (
+        None
+        if neg_used_bertopic
+        else neg_topic_keywords.get(-1, "")
     )
     report_path = builder.build(
         df=df,
@@ -242,6 +262,8 @@ def run(args: argparse.Namespace) -> None:
         ngrams_unigrams_html=outliers_viz["unigrams_html"],
         ngrams_bigrams_html=outliers_viz["bigrams_html"],
         ngrams_trigrams_html=outliers_viz["trigrams_html"],
+        pos_fallback_keywords=pos_fallback_keywords,
+        neg_fallback_keywords=neg_fallback_keywords,
         output_dir=args.output,
     )
 
