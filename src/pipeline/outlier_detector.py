@@ -20,9 +20,7 @@ from src.utils.validators import RANDOM_SEED
 
 logger = logging.getLogger(__name__)
 
-CACHE_DIR = Path("outputs")
-EMBEDDINGS_PATH = CACHE_DIR / "embeddings.npy"
-HASH_PATH = CACHE_DIR / "cache_hash.txt"
+DEFAULT_CACHE_DIR = Path("outputs")
 
 
 class OutlierDetector:
@@ -40,7 +38,7 @@ class OutlierDetector:
         self,
         embedding_model,
         contamination: float = 0.05,
-        cache_dir: Path = CACHE_DIR,
+        cache_dir: Path = DEFAULT_CACHE_DIR,
     ) -> None:
         self._model = embedding_model
         self._contamination = contamination

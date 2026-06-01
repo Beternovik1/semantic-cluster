@@ -172,6 +172,7 @@ def run(args: argparse.Namespace) -> None:
     detector = OutlierDetector(
         embedding_model=embedding_model,
         contamination=args.contamination,
+        cache_dir=args.output,
     )
     df, outliers_df, embeddings_clean = detector.run(df)
 

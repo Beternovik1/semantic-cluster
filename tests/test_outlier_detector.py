@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_array_equal
 
-from src.pipeline.outlier_detector import CACHE_DIR, OutlierDetector
+from src.pipeline.outlier_detector import DEFAULT_CACHE_DIR, OutlierDetector
 from src.utils.validators import RANDOM_SEED
 
 
@@ -79,7 +79,7 @@ class TestConstructor:
 
     def test_default_cache_dir(self, fake_encoder):
         d = OutlierDetector(embedding_model=fake_encoder)
-        assert d._cache_dir == CACHE_DIR
+        assert d._cache_dir == DEFAULT_CACHE_DIR
 
     def test_custom_cache_dir(self, fake_encoder):
         d = OutlierDetector(
