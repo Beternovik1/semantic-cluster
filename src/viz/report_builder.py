@@ -112,40 +112,24 @@ _REPORT_TEMPLATE = """<!DOCTYPE html>
     <div class="col-md-6"><img src="{{ data.wc_negative_b64 }}" class="img-fluid" alt="Negative Word Cloud"></div>
   </div>
 
-  <!-- 5. Topic Modeling Positive -->
+  <!-- 5. Topic Modeling Overview -->
   <div class="row section-title">
-    <div class="col-12"><h2>Topic Modeling — Positive Comments</h2></div>
+    <div class="col-12"><h2>Topic Modeling Overview</h2></div>
   </div>
   <div class="row">
     <div class="col-12">
       {% if data.scatter_topics_html %}
+      <p class="text-muted">Both positive and negative comments are shown on the same plot. Each point is a comment, colored by its topic cluster. Hover over a point to see the comment text and sentiment.</p>
       <iframe srcdoc="{{ data.scatter_topics_html | e }}" class="bokeh-frame"></iframe>
       {% else %}
       <div class="alert alert-info" role="alert">
-        Fewer than {{ data.min_partition_size }} comments in this partition. Word frequency shown instead of topic modeling.
+        Fewer than {{ data.min_partition_size }} comments in one or both partitions. Word frequency shown instead of topic modeling.
       </div>
       {% if data.pos_fallback_keywords %}
-      <p><strong>Top keywords:</strong> {{ data.pos_fallback_keywords }}</p>
+      <p><strong>Positive — Top keywords:</strong> {{ data.pos_fallback_keywords }}</p>
       {% endif %}
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- 6. Topic Modeling Negative -->
-  <div class="row section-title">
-    <div class="col-12"><h2>Topic Modeling — Negative Comments</h2></div>
-  </div>
-  <div class="row">
-    <div class="col-12">
-      {% if data.scatter_topics_html %}
-      {# Single scatter covers both pos and neg — re-use it #}
-      <iframe srcdoc="{{ data.scatter_topics_html | e }}" class="bokeh-frame"></iframe>
-      {% else %}
-      <div class="alert alert-info" role="alert">
-        Fewer than {{ data.min_partition_size }} comments in this partition. Word frequency shown instead of topic modeling.
-      </div>
       {% if data.neg_fallback_keywords %}
-      <p><strong>Top keywords:</strong> {{ data.neg_fallback_keywords }}</p>
+      <p><strong>Negative — Top keywords:</strong> {{ data.neg_fallback_keywords }}</p>
       {% endif %}
       {% endif %}
     </div>

@@ -200,6 +200,8 @@ class WordCloudGenerator:
             ngram_range=(n, n),
             stop_words=stop_list,
             max_features=NGRAM_TOP_N,
+            min_df=2,
+            max_df=0.9,
         )
 
         try:

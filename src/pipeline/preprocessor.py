@@ -63,12 +63,23 @@ class Preprocessor:
         clean_texts: list[str] = []
         token_lists: list[list[str]] = []
 
-        for text in df["raw_text"]:
+        for idx, text in enumerate(df["raw_text"]):
             if not isinstance(text, str):
                 text = ""
 
             text = self._truncate(text)
             text = self._clean(text)
+
+            tokens_pre = text.split()
+            if len(tokens_pre) < 2:
+                logger.warning(
+                    "Row %d dropped: < 2 tokens after cleaning. "
+                    "Preview: '%s'",
+                    idx, text[:80],
+                )
+                clean_texts.append("")
+                token_lists.append([])
+                continue
 
             if self.config.sentiment_backend == "vader":
                 text = self._process_vader(text)

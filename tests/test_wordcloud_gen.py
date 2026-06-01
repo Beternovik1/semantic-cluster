@@ -46,10 +46,10 @@ def outlier_df():
     return pd.DataFrame(
         {
             "clean_text": [
-                "This hotel is absolutely terrible and disgusting",
-                "Worst experience ever horrible service bad food",
-                "Dirty rooms rude staff never coming back",
-                "Awful place completely overpriced not worth it",
+                "hotel terrible service staff location",
+                "hotel terrible service bad food",
+                "hotel terrible rude staff location",
+                "hotel terrible overpriced awful location",
             ]
         }
     )
@@ -170,8 +170,12 @@ class TestFromOutliers:
         df = pd.DataFrame(
             {
                 "clean_text": [
-                    "the hotel the food a service and staff the room",
-                    "a an the terrible awful disgusting",
+                    "the hotel terrible service",
+                    "hotel terrible food service staff the",
+                    "the hotel good food service staff",
+                    "hotel good food service",
+                    "the terrible room food staff",
+                    "hotel terrible room food staff",
                 ]
             }
         )
