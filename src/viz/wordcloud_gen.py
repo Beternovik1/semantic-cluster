@@ -170,6 +170,7 @@ class WordCloudGenerator:
             width=800,
             height=400,
             random_state=42,
+            colormap=self._pm.name,
         ).generate(text)
 
         out_path = output_dir / f"wordcloud_{suffix}.png"
@@ -224,6 +225,7 @@ class WordCloudGenerator:
             labels={"x": "N-gram", "y": "Frequency"},
             title=f"Top {n}-grams in Outliers",
             template=self._pm.get_plotly_template(),
+            color_discrete_sequence=self._pm.get_plotly_palette(NGRAM_TOP_N),
         )
 
         fig.update_xaxes(tickangle=-45)

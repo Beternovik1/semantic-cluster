@@ -121,6 +121,14 @@ class PaletteManager:
     def get_plotly_template(self) -> str:
         return get_plotly_template(self.name)
 
+    def get_accent_color(self) -> str:
+        """Return a hex accent colour for UI elements (section headers, cards).
+
+        Samples the colormap at ~65% for a saturated, readable accent
+        on both light and dark backgrounds.
+        """
+        return _sample_colors(self.name, 100)[65]
+
     # ── Shapes (redundant encoding) ────────────────────────────────
 
     @staticmethod

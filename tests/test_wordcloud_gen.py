@@ -29,8 +29,12 @@ def lang_cfg():
 @pytest.fixture
 def palette():
     pm = MagicMock()
+    pm.name = "viridis"
     pm.get_background.return_value = "#ffffff"
     pm.get_plotly_template.return_value = "plotly_white"
+    pm.get_plotly_palette.return_value = [
+        "#440154", "#3b528b", "#21918c", "#5ec962", "#fde725",
+    ]
     return pm
 
 

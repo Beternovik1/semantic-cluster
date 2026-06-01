@@ -36,6 +36,8 @@ _REPORT_TEMPLATE = """<!DOCTYPE html>
   iframe.bokeh-frame { width: 100%; height: 800px; border: none; }
   .top5-table td, .top5-table th { vertical-align: middle; }
   footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 0.9rem; }
+  .section-title h2 { border-bottom: 3px solid {{ data.accent_color }}; padding-bottom: 0.5rem; }
+  .card.summary-card { border-top: 3px solid {{ data.accent_color }}; }
 </style>
 </head>
 <body>
@@ -206,6 +208,10 @@ class ReportData:
     neg_fallback_keywords: str | None = None
     top5_semantic: list[dict[str, Any]] = field(default_factory=list)
 
+    palette_name: str = "viridis"
+    accent_color: str = "#0d6efd"
+    is_dark_bg: bool = False
+
 
 # ── Report builder ───────────────────────────────────────────────────────────
 
@@ -334,6 +340,9 @@ class ReportBuilder:
             ngrams_trigrams_html=ngrams_trigrams_html,
             pos_fallback_keywords=pos_fallback_keywords,
             neg_fallback_keywords=neg_fallback_keywords,
+            palette_name=self._palette.name,
+            accent_color=self._palette.get_accent_color(),
+            is_dark_bg=self._palette.is_dark,
         )
 
         if df is not None:
