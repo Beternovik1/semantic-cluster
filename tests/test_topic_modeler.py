@@ -416,7 +416,7 @@ class TestAllNoiseEdgeCase:
         assert df_out["topic_id"].unique().tolist() == [-1]
         assert df_out["umap_x"].notna().all()
         assert df_out["umap_y"].notna().all()
-        assert (df_out["topic_label"] == "").all()
+        assert (df_out["topic_label"] == "General").all()
         assert not df_out["representative_doc"].any()
         assert keywords == {}
 

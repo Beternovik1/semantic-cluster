@@ -251,6 +251,17 @@ def run(args: argparse.Namespace) -> None:
         if neg_used_bertopic
         else neg_topic_keywords.get(-1, "")
     )
+
+    cli_params = {
+        "File": str(args.file),
+        "Column": args.column,
+        "Language": args.lang,
+        "Title": args.title,
+        "Palette": args.palette,
+        "Concept": args.concept,
+        "Contamination": args.contamination,
+    }
+
     report_path = builder.build(
         df=df,
         outliers_df=outliers_df,
@@ -264,6 +275,9 @@ def run(args: argparse.Namespace) -> None:
         ngrams_trigrams_html=outliers_viz["trigrams_html"],
         pos_fallback_keywords=pos_fallback_keywords,
         neg_fallback_keywords=neg_fallback_keywords,
+        pos_topic_keywords=pos_topic_keywords,
+        neg_topic_keywords=neg_topic_keywords,
+        cli_params=cli_params,
         output_dir=args.output,
     )
 

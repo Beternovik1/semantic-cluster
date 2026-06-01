@@ -22,6 +22,111 @@ from src.utils.validators import MIN_PARTITION_SIZE, RANDOM_SEED
 
 logger = logging.getLogger(__name__)
 
+_TOPIC_NAME_KEYWORDS: dict[str, str] = {
+    "precio": "Pricing",
+    "costo": "Pricing",
+    "coste": "Pricing",
+    "dinero": "Pricing",
+    "caro": "Pricing",
+    "barato": "Pricing",
+    "price": "Pricing",
+    "cost": "Pricing",
+    "value": "Pricing",
+    "expensive": "Pricing",
+    "cheap": "Pricing",
+    "prix": "Pricing",
+    "coût": "Pricing",
+    "cher": "Pricing",
+    "preis": "Pricing",
+    "kosten": "Pricing",
+    "teuer": "Pricing",
+    "billig": "Pricing",
+    "preço": "Pricing",
+    "custo": "Pricing",
+    "calidad": "Quality",
+    "quality": "Quality",
+    "qualité": "Quality",
+    "qualität": "Quality",
+    "qualidade": "Quality",
+    "servicio": "Service",
+    "serviço": "Service",
+    "service": "Service",
+    "atención": "Service",
+    "personal": "Service",
+    "staff": "Service",
+    "personnel": "Service",
+    "dienst": "Service",
+    "pessoal": "Service",
+    "ubicación": "Location",
+    "ubicacion": "Location",
+    "lugar": "Location",
+    "location": "Location",
+    "emplacement": "Location",
+    "lage": "Location",
+    "localização": "Location",
+    "habitación": "Room",
+    "habitacion": "Room",
+    "room": "Room",
+    "chambre": "Room",
+    "zimmer": "Room",
+    "quarto": "Room",
+    "limpieza": "Cleanliness",
+    "limpio": "Cleanliness",
+    "clean": "Cleanliness",
+    "cleanliness": "Cleanliness",
+    "propreté": "Cleanliness",
+    "sauberkeit": "Cleanliness",
+    "sauber": "Cleanliness",
+    "limpeza": "Cleanliness",
+    "comida": "Food",
+    "desayuno": "Food",
+    "food": "Food",
+    "breakfast": "Food",
+    "restaurant": "Food",
+    "nourriture": "Food",
+    "petit-déjeuner": "Food",
+    "frühstück": "Food",
+    "essen": "Food",
+    "restaurante": "Food",
+    "experiencia": "Experience",
+    "experience": "Experience",
+    "ambiente": "Atmosphere",
+    "atmosphere": "Atmosphere",
+    "decoración": "Atmosphere",
+    "wifi": "Amenities",
+    "parking": "Amenities",
+    "estacionamiento": "Amenities",
+    "piscina": "Amenities",
+    "pool": "Amenities",
+    "gym": "Amenities",
+    "transporte": "Amenities",
+}
+
+
+def _readable_topic_name(keywords_str: str) -> str:
+    """Map a comma-separated keyword string to a human-readable topic name.
+
+    Args:
+        keywords_str: Comma-separated keywords from topic modeler.
+
+    Returns:
+        A short human-readable name like "Pricing" or "Service".
+        Falls back to first 2 keywords formatted as title if no match.
+    """
+    if not keywords_str:
+        return "General"
+    keywords = [k.strip().lower() for k in keywords_str.split(",")]
+    scores: dict[str, int] = {}
+    for kw in keywords:
+        for pattern, name in _TOPIC_NAME_KEYWORDS.items():
+            if pattern in kw or kw in pattern:
+                scores[name] = scores.get(name, 0) + 1
+                break
+    if scores:
+        return max(scores, key=scores.get)
+    parts = [k.strip().title() for k in keywords_str.split(",")[:2]]
+    return " / ".join(parts)
+
 
 class TopicModeler:
     """Apply BERTopic or fallback word-frequency topic modeling.
@@ -126,12 +231,15 @@ class TopicModeler:
                 kw_str = ""
             topic_keywords[tid] = kw_str
 
-        # Map each row to its topic_label (keywords string)
+        # Map each row to its topic_label (readable name) and topic_keywords (raw)
         def _label(tid: int) -> str:
+            return _readable_topic_name(topic_keywords.get(tid, ""))
+
+        def _keywords(tid: int) -> str:
             return topic_keywords.get(tid, "")
 
         df_out["topic_label"] = df_out["topic_id"].apply(_label)
-        df_out["topic_keywords"] = df_out["topic_label"]
+        df_out["topic_keywords"] = df_out["topic_id"].apply(_keywords)
 
         # Representative document (centroid)
         df_out["representative_doc"] = False

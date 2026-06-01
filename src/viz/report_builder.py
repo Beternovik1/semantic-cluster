@@ -49,22 +49,51 @@ _REPORT_TEMPLATE = """<!DOCTYPE html>
       <h1 class="display-5">{{ data.title }}</h1>
       <p class="text-muted">Generated {{ data.timestamp }}</p>
       {% if data.cli_params %}
-      <table class="table table-sm table-bordered" style="max-width: 600px;">
-        <caption class="visually-hidden">CLI Parameters</caption>
-        <tbody>
-          {% for key, value in data.cli_params.items() %}
-          <tr><th scope="row" class="w-25">{{ key }}</th><td>{{ value }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <details>
+        <summary class="text-muted" style="cursor:pointer;">Technical Configuration</summary>
+        <table class="table table-sm table-bordered" style="max-width: 600px; margin-top: 0.5rem;">
+          <caption class="visually-hidden">CLI Parameters</caption>
+          <tbody>
+            {% for key, value in data.cli_params.items() %}
+            <tr><th scope="row" class="w-25">{{ key }}</th><td>{{ value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
       {% endif %}
     </div>
   </div>
 
-  <!-- 2. Pipeline Summary -->
+  <!-- 2. Executive Summary -->
+  <div class="row section-title">
+    <div class="col-12"><h2>Executive Summary</h2></div>
+  </div>
+  <p class="text-muted">High-level overview of the key findings from the analysis.</p>
+  <div class="row">
+    <div class="col-12">
+      <ul>
+        <li>Analyzed <strong>{{ data.total_rows }}</strong> comments in total.</li>
+        <li>Sentiment split: <strong>{{ "%.1f"|format(data.pos_pct * 100) }}% positive</strong> ({{ data.pos_count }}), <strong>{{ "%.1f"|format(data.neg_pct * 100) }}% negative</strong> ({{ data.neg_count }}).</li>
+        <li>Detected <strong>{{ data.outliers_count }}</strong> outlier(s) — removed before downstream analysis.</li>
+        {% if data.top_positive_topic %}
+        <li>Top positive topic: <strong>{{ data.top_positive_topic }}</strong>.</li>
+        {% endif %}
+        {% if data.top_negative_topic %}
+        <li>Top negative topic: <strong>{{ data.top_negative_topic }}</strong>.</li>
+        {% endif %}
+        {% if data.top_concept_score > 0 %}
+        <li>Highest semantic similarity to the target concept: <strong>{{ "%.3f"|format(data.top_concept_score) }}</strong>.</li>
+        {% endif %}
+        <li>Confidence rate: <strong>{{ "%.1f"|format(data.confidence_rate * 100) }}%</strong>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3. Pipeline Summary -->
   <div class="row section-title">
     <div class="col-12"><h2>Pipeline Summary</h2></div>
   </div>
+  <p class="text-muted">Overview of the dataset after preprocessing, outlier removal, and sentiment classification.</p>
   <div class="row">
     <div class="col-md-3">
       <div class="card summary-card text-center">
@@ -89,10 +118,11 @@ _REPORT_TEMPLATE = """<!DOCTYPE html>
   </div>
   <p>Confidence rate: <strong>{{ "%.1f"|format(data.confidence_rate * 100) }}%</strong></p>
 
-  <!-- 3. Outlier Analysis -->
+  <!-- 4. Outlier Analysis -->
   <div class="row section-title">
     <div class="col-12"><h2>Outlier Analysis</h2></div>
   </div>
+  <p class="text-muted">Comments flagged as statistically unusual are shown below. The word cloud highlights frequent terms; n-gram charts reveal multi-word patterns among outliers.</p>
   <div class="row">
     <div class="col-md-6"><img src="{{ data.wc_outliers_b64 }}" class="img-fluid" alt="Outliers Word Cloud"></div>
     <div class="col-md-6">
@@ -105,19 +135,21 @@ _REPORT_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- 4. Sentiment Analysis Summary -->
+  <!-- 5. Sentiment Analysis Summary -->
   <div class="row section-title">
     <div class="col-12"><h2>Sentiment Analysis</h2></div>
   </div>
+  <p class="text-muted">Each comment was classified as positive or negative. The word clouds below show the most frequent terms for each sentiment group.</p>
   <div class="row">
     <div class="col-md-6"><img src="{{ data.wc_positive_b64 }}" class="img-fluid" alt="Positive Word Cloud"></div>
     <div class="col-md-6"><img src="{{ data.wc_negative_b64 }}" class="img-fluid" alt="Negative Word Cloud"></div>
   </div>
 
-  <!-- 5. Topic Modeling Overview -->
+  <!-- 6. Topic Modeling Overview -->
   <div class="row section-title">
     <div class="col-12"><h2>Topic Modeling Overview</h2></div>
   </div>
+  <p class="text-muted">Topics are automatically extracted from positive and negative comments. Each point represents a comment; color and shape encode its topic cluster. Hover over a point to see the comment text.</p>
   <div class="row">
     <div class="col-12">
       {% if data.scatter_topics_html %}
@@ -141,6 +173,7 @@ _REPORT_TEMPLATE = """<!DOCTYPE html>
   <div class="row section-title">
     <div class="col-12"><h2>Semantic Concept Analysis</h2></div>
   </div>
+  <p class="text-muted">Each comment is scored by cosine similarity to a target concept. Brighter / higher points are more semantically related. The table below lists the five most relevant comments.</p>
   <div class="row">
     <div class="col-12">
       {% if data.scatter_semantic_html %}
@@ -208,6 +241,12 @@ class ReportData:
     neg_fallback_keywords: str | None = None
     top5_semantic: list[dict[str, Any]] = field(default_factory=list)
 
+    pos_pct: float = 0.0
+    neg_pct: float = 0.0
+    top_positive_topic: str = ""
+    top_negative_topic: str = ""
+    top_concept_score: float = 0.0
+
     palette_name: str = "viridis"
     accent_color: str = "#0d6efd"
     is_dark_bg: bool = False
@@ -242,6 +281,9 @@ class ReportBuilder:
         ngrams_trigrams_html: str = "",
         pos_fallback_keywords: str | None = None,
         neg_fallback_keywords: str | None = None,
+        pos_topic_keywords: dict[int, str] | None = None,
+        neg_topic_keywords: dict[int, str] | None = None,
+        cli_params: dict[str, Any] | None = None,
         output_dir: Path | str = Path("outputs"),
     ) -> Path:
         """Render and save the complete HTML report.
@@ -262,6 +304,12 @@ class ReportBuilder:
                 partition, or ``None`` if BERTopic was used.
             neg_fallback_keywords: Fallback keywords for negative
                 partition, or ``None`` if BERTopic was used.
+            pos_topic_keywords: Full topic keywords dict for positive
+                partition, or ``None``.
+            neg_topic_keywords: Full topic keywords dict for negative
+                partition, or ``None``.
+            cli_params: CLI arguments as a dict for the technical
+                configuration table, or ``None``.
             output_dir: Directory to save ``report.html``.
 
         Returns:
@@ -280,6 +328,9 @@ class ReportBuilder:
             ngrams_trigrams_html=ngrams_trigrams_html,
             pos_fallback_keywords=pos_fallback_keywords,
             neg_fallback_keywords=neg_fallback_keywords,
+            pos_topic_keywords=pos_topic_keywords,
+            neg_topic_keywords=neg_topic_keywords,
+            cli_params=cli_params,
         )
 
         bootstrap_css = self._read_asset(ASSETS_DIR / "bootstrap.min.css")
@@ -323,6 +374,9 @@ class ReportBuilder:
         ngrams_trigrams_html: str = "",
         pos_fallback_keywords: str | None = None,
         neg_fallback_keywords: str | None = None,
+        pos_topic_keywords: dict[int, str] | None = None,
+        neg_topic_keywords: dict[int, str] | None = None,
+        cli_params: dict[str, Any] | None = None,
     ) -> ReportData:
         """Populate a ``ReportData`` instance from pipeline outputs."""
         data = ReportData(
@@ -345,15 +399,24 @@ class ReportBuilder:
             is_dark_bg=self._palette.is_dark,
         )
 
+        if cli_params:
+            data.cli_params = cli_params
+
         if df is not None:
             data.total_rows = len(df)
+            n = len(df)
             data.pos_count = int((df["sentiment"] == "pos").sum())
             data.neg_count = int((df["sentiment"] == "neg").sum())
+            data.pos_pct = data.pos_count / n if n else 0.0
+            data.neg_pct = data.neg_count / n if n else 0.0
             data.confidence_rate = float(
                 df["sentiment_confidence"].mean()
             ) if "sentiment_confidence" in df.columns else 0.0
 
             if "concept_similarity" in df.columns:
+                data.top_concept_score = float(
+                    df["concept_similarity"].max()
+                )
                 top5 = (
                     df.nlargest(5, "concept_similarity")[
                         ["clean_text", "concept_similarity", "sentiment"]
@@ -373,6 +436,24 @@ class ReportBuilder:
             data.clean_count = max(
                 0, data.total_rows - data.outliers_count
             )
+
+        # Topic keywords for executive summary
+        if pos_topic_keywords:
+            non_noise = {
+                k: v for k, v in pos_topic_keywords.items() if k != -1 and v
+            }
+            if non_noise:
+                from src.pipeline.topic_modeler import _readable_topic_name
+                first_kw = next(iter(non_noise.values()))
+                data.top_positive_topic = _readable_topic_name(first_kw)
+        if neg_topic_keywords:
+            non_noise = {
+                k: v for k, v in neg_topic_keywords.items() if k != -1 and v
+            }
+            if non_noise:
+                from src.pipeline.topic_modeler import _readable_topic_name
+                first_kw = next(iter(non_noise.values()))
+                data.top_negative_topic = _readable_topic_name(first_kw)
 
         return data
 
