@@ -1,4 +1,6 @@
-"""Chart-style offline HTML report via Jinja2 with sidebar layout.
+"""
+LAST USED MINIMAL
+Chart-style offline HTML report via Jinja2 with sidebar layout.
 
 Shares the same data assembly as ``ReportBuilder`` but renders a
 different template (sidebar + topbar layout).
@@ -156,7 +158,7 @@ _CHART_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ data.title }} — Semantic Cluster Report</title>
+<title>{{ data.title }} — Edgar Alfaro Report</title>
 <style>{{ bootstrap_css }}</style>
 <style>{{ bootstrap_icons_css }}</style>
 <style>
@@ -669,8 +671,8 @@ details.cli-details[open] summary { margin-bottom: 10px; }
 
 <nav id="sidebar">
   <a href="#overview" class="sb-brand">
-    <div class="sb-logo">SC</div>
-    <div class="sb-name">Semantic Cluster</div>
+    <div class="sb-logo">B</div>
+    <div class="sb-name">Beternovik</div>
   </a>
 
   <div class="sb-section">Report</div>
@@ -1141,7 +1143,7 @@ details.cli-details[open] summary { margin-bottom: 10px; }
 
   <!-- Footer -->
   <footer class="rpt-footer">
-    <span><strong>Semantic Cluster</strong> &mdash; Fully self-contained offline NLP report.</span>
+    <span><strong>Developed by Edgar Alfaro Hernandez</strong> &mdash; Fully self-contained offline NLP report.</span>
   </footer>
 
 </div><!-- /main -->
