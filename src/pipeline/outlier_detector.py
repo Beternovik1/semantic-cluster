@@ -4,11 +4,15 @@ Computes or loads cached embeddings, applies dynamic PCA
 dimensionality reduction, and flags semantic outliers.
 Maintains strict row alignment between the returned DataFrame
 and embeddings_clean numpy array.
+
+Cache is keyed by CSV stem via ``index.json`` so different
+datasets never invalidate each other's embeddings.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 from pathlib import Path
 
@@ -20,7 +24,7 @@ from src.utils.validators import RANDOM_SEED
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CACHE_DIR = Path("outputs")
+DEFAULT_CACHE_DIR = Path("outputs") / ".cache"
 
 
 class OutlierDetector:
@@ -30,8 +34,10 @@ class OutlierDetector:
         embedding_model: A ``SentenceTransformer`` instance (injected).
         contamination: Expected proportion of outliers in the dataset.
             Must be between 0.01 and 0.15.
-        cache_dir: Directory for ``embeddings.npy`` and
-            ``cache_hash.txt``. Defaults to ``outputs/``.
+        cache_dir: Directory for per-dataset cache subfolders.
+            Defaults to ``outputs/.cache/``.
+        csv_stem: Filename stem of the input CSV (e.g. ``"reviews_sample"``).
+            Used as the lookup key in ``index.json``.
     """
 
     def __init__(
@@ -39,10 +45,12 @@ class OutlierDetector:
         embedding_model,
         contamination: float = 0.05,
         cache_dir: Path = DEFAULT_CACHE_DIR,
+        csv_stem: str = "",
     ) -> None:
         self._model = embedding_model
         self._contamination = contamination
         self._cache_dir = Path(cache_dir)
+        self._csv_stem = csv_stem
 
     def run(self, df):
         """Detect outliers and return aligned clean/outlier splits.
@@ -99,10 +107,32 @@ class OutlierDetector:
         self._save_cache(embeddings, current_hash)
         return embeddings
 
+    def _load_index(self) -> dict[str, str]:
+        """Load the cache index from ``index.json``."""
+        index_path = self._cache_dir / "index.json"
+        if index_path.exists():
+            return json.loads(index_path.read_text(encoding="utf-8"))
+        return {}
+
+    def _save_index(self, index: dict[str, str]) -> None:
+        """Persist the cache index to ``index.json``."""
+        index_path = self._cache_dir / "index.json"
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        index_path.write_text(
+            json.dumps(index, indent=2), encoding="utf-8"
+        )
+
     def _try_load_cache(self, current_hash: str) -> np.ndarray | None:
-        """Load cached embeddings if ``cache_hash.txt`` matches."""
-        emb_path = self._cache_dir / "embeddings.npy"
-        hash_path = self._cache_dir / "cache_hash.txt"
+        """Look up CSV stem in index, compare hash, load if match."""
+        index = self._load_index()
+        cached_dir = index.get(self._csv_stem)
+
+        if cached_dir is None:
+            return None
+
+        cache_path = Path(cached_dir)
+        emb_path = cache_path / "embeddings.npy"
+        hash_path = cache_path / "cache_hash.txt"
 
         if not emb_path.exists() or not hash_path.exists():
             return None
@@ -111,21 +141,32 @@ class OutlierDetector:
 
         if saved_hash != current_hash:
             logger.warning(
-                "Cache invalidated: text content changed. Recomputing."
+                "Cache invalidated for '%s': text content changed. "
+                "Recomputing.", self._csv_stem,
             )
             return None
 
         return np.load(emb_path)
 
     def _save_cache(self, embeddings: np.ndarray, hash_val: str) -> None:
-        """Persist embeddings and their hash for future runs."""
-        emb_path = self._cache_dir / "embeddings.npy"
-        hash_path = self._cache_dir / "cache_hash.txt"
+        """Persist embeddings and update the cache index."""
+        stem = self._csv_stem or hash_val[:8]
+        folder = f"{stem}_{hash_val[:8]}"
+        cache_path = self._cache_dir / folder
+        cache_path.mkdir(parents=True, exist_ok=True)
 
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        emb_path = cache_path / "embeddings.npy"
+        hash_path = cache_path / "cache_hash.txt"
         np.save(emb_path, embeddings)
         hash_path.write_text(hash_val, encoding="utf-8")
-        logger.info("Embeddings cached to %s.", emb_path)
+
+        index = self._load_index()
+        index[self._csv_stem] = str(cache_path)
+        self._save_index(index)
+
+        logger.info(
+            "Embeddings cached to %s (stem=%s).", cache_path, self._csv_stem
+        )
 
     # ── PCA + IsolationForest ───────────────────────────────────────
 
