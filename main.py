@@ -12,6 +12,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 import argparse
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from sentence_transformers import SentenceTransformer
@@ -143,19 +144,26 @@ def run(args: argparse.Namespace) -> None:
     from src.pipeline.semantic_search import SemanticSearch
     from src.viz.scatter_plot import ScatterPlot
     from src.viz.wordcloud_gen import WordCloudGenerator
-    from src.viz.report_builder import ReportBuilder
+    from src.viz.new_report_builder import ReportChartBuilder
 
     # ── 0. Validate inputs, load config ───────────────────────────
     validate_args(args)
     lang_cfg = LanguageConfig(args.lang)
     palette = PaletteManager(args.palette)
 
-    # Clean output directory (preserve embeddings cache)
+    # Create per-run output folder inside the root output directory
+    cache_dir = args.output
+    run_name = f"{datetime.now():%Y%m%d_%H%M%S}_{args.file.stem}"
+    run_dir = args.output / run_name
+    run_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Run outputs → %s", run_dir)
+
+    # Clean root output dir — keep subdirs (per-run folders, .cache)
     if args.output.exists():
         for p in args.output.iterdir():
-            if p.name not in ("embeddings.npy", "cache_hash.txt"):
-                p.unlink()
-    args.output.mkdir(parents=True, exist_ok=True)
+            if p.is_dir():
+                continue
+            p.unlink()
 
     # ── 1. Load data ──────────────────────────────────────────────
     logger.info("[1/6] Loading data from %s ...", args.file)
@@ -172,7 +180,8 @@ def run(args: argparse.Namespace) -> None:
     detector = OutlierDetector(
         embedding_model=embedding_model,
         contamination=args.contamination,
-        cache_dir=args.output,
+        cache_dir=cache_dir / ".cache",
+        csv_stem=args.file.stem,
     )
     df, outliers_df, embeddings_clean = detector.run(df)
 
@@ -228,30 +237,14 @@ def run(args: argparse.Namespace) -> None:
         df_pos=df_pos,
         df_neg=df_neg,
         concept=args.concept,
-        output_dir=args.output,
+        output_dir=run_dir,
     )
 
     logger.info("[VIZ] Generating word clouds and n-grams ...")
     wc = WordCloudGenerator(palette, lang_cfg)
-    outliers_viz = wc.from_outliers(outliers_df, args.output)
-    wc_positive_b64 = wc.from_partition(df_pos, "positive", args.output)
-    wc_negative_b64 = wc.from_partition(df_neg, "negative", args.output)
-
-    logger.info("[VIZ] Building HTML report ...")
-    builder = ReportBuilder(
-        title=args.title,
-        palette=palette,
-    )
-    pos_fallback_keywords = (
-        None
-        if pos_used_bertopic
-        else pos_topic_keywords.get(-1, "")
-    )
-    neg_fallback_keywords = (
-        None
-        if neg_used_bertopic
-        else neg_topic_keywords.get(-1, "")
-    )
+    outliers_viz = wc.from_outliers(outliers_df, run_dir)
+    wc_positive_b64 = wc.from_partition(df_pos, "positive", run_dir)
+    wc_negative_b64 = wc.from_partition(df_neg, "negative", run_dir)
 
     cli_params = {
         "File": str(args.file),
@@ -263,7 +256,24 @@ def run(args: argparse.Namespace) -> None:
         "Contamination": args.contamination,
     }
 
-    report_path = builder.build(
+    pos_fallback_keywords = (
+        None
+        if pos_used_bertopic
+        else pos_topic_keywords.get(-1, "")
+    )
+    neg_fallback_keywords = (
+        None
+        if neg_used_bertopic
+        else neg_topic_keywords.get(-1, "")
+    )
+
+    # ── Build the report ───────────────────────────────────────────
+    logger.info("[VIZ] Building HTML report ...")
+    chart_builder = ReportChartBuilder(
+        title=args.title,
+        palette=palette,
+    )
+    report_path = chart_builder.build(
         df=df,
         outliers_df=outliers_df,
         scatter_topics_html=scatter_topics_html,
@@ -279,9 +289,9 @@ def run(args: argparse.Namespace) -> None:
         pos_topic_keywords=pos_topic_keywords,
         neg_topic_keywords=neg_topic_keywords,
         cli_params=cli_params,
-        output_dir=args.output,
+        concept_name=args.concept,
+        output_dir=run_dir,
     )
-
     logger.info("Pipeline complete. Report: %s", report_path)
 
 
