@@ -4,7 +4,7 @@ Assembles all pipeline outputs — word clouds, n-gram charts, Bokeh
 scatter plots, and metric summaries — into a single ``report.html``
 with all external resources (Bootstrap CSS, Plotly JS) embedded inline.
 
-Visual style mirrors the Falcon dashboard design system.
+Visual style is clean, content-first with restrained dashboard components.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
 
 
-# ── Falcon dashboard CSS (design tokens + component styles) ──────────────────
+# ── Dashboard CSS (design tokens + component styles) ──────────────────
 
 _FALCON_CSS = """
   /* ── DESIGN TOKENS ── */
